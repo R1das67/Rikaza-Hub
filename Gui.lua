@@ -16,6 +16,7 @@ local LightCorner = Instance.new("UICorner")
 
 ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.Name = "RikazaHub"
+ScreenGui.ResetOnSpawn = false 
 
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)

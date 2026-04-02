@@ -8,7 +8,7 @@ local ParryEvent = nil
 
 if Remotes then
     for _, child in pairs(Remotes:GetChildren()) do
-        if child:IsA("RemoteEvent") and (child.Name:find("Parry") or child.Name:find("Click")) then
+        if (child:IsA("RemoteEvent") or child:IsA("BindableEvent")) and (child.Name:find("Parry") or child.Name:find("Click")) then
             ParryEvent = child
             break
         end
@@ -18,12 +18,13 @@ end
 _G.AutoShoot = false
 
 local function getCurrentBall()
-    local ballFolder = workspace:FindFirstChild("Balls")
-    if ballFolder then
-        -- Wir nehmen den Ball, der am schnellsten ist oder als "real" markiert wurde
-        for _, ball in pairs(ballFolder:GetChildren()) do
-            if ball:IsA("BasePart") or ball:IsA("MeshPart") then
-                return ball
+    local folders = {workspace:FindFirstChild("Balls"), workspace:FindFirstChild("Ball")}
+    for _, ballFolder in pairs(folders) do
+        if ballFolder then
+            for _, ball in pairs(ballFolder:GetChildren()) do
+                if ball:IsA("BasePart") or ball:IsA("MeshPart") then
+                    return ball
+                end
             end
         end
     end
@@ -42,13 +43,11 @@ RunService.PostSimulation:Connect(function()
         local velocity = ball.AssemblyLinearVelocity
         local speed = velocity.Magnitude
         
-        -- Prüfen, ob der Ball auf uns zukommt
         local ballDirection = (rootPart.Position - ball.Position).Unit
         local isComingTowardsMe = velocity.Unit:Dot(ballDirection)
         
-        if isComingTowardsMe > 0.1 then
-            -- ETWAS GRÖSSERER RADIUS FÜR IPAD/HANDY (15 statt 12)
-            local dynamicRange = 15 + (speed * 0.25)
+        if isComingTowardsMe > 0.1 or distance < 20 then
+            local dynamicRange = 18 + (speed * 0.25)
             
             if distance <= dynamicRange then
                 if ParryEvent then

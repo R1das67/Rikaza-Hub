@@ -1,3 +1,5 @@
+_G.AutoShoot = false
+
 local function load(url)
     local success, result = pcall(game.HttpGet, game, url)
     if success then
@@ -5,12 +7,12 @@ local function load(url)
         if func then
             func()
         else
-            warn("Fehler im Code der Datei: " .. tostring(err))
+            warn("Error: " .. tostring(err))
         end
     else
-        warn("Link konnte nicht geladen werden: " .. tostring(result))
+        warn("Link Error: " .. tostring(result))
     end
 end
 
-load("https://raw.githubusercontent.com/R1das67/Rikaza-Hub/refs/heads/main/Main.lua")
 load("https://raw.githubusercontent.com/R1das67/Rikaza-Hub/refs/heads/main/Gui.lua")
+load("https://raw.githubusercontent.com/R1das67/Rikaza-Hub/refs/heads/main/Main.lua")

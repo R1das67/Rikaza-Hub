@@ -15,21 +15,16 @@ local function getParryEvent()
 end
 
 local ParryEvent = getParryEvent()
-_G.AutoShoot = false
 
 local function isBallTargetingMe(obj, rootPart)
     local relativePos = rootPart.Position - obj.Position
     local velocity = obj.AssemblyLinearVelocity
-    
     if velocity.Magnitude < 5 then return false end
-    
     local dot = velocity.Unit:Dot(relativePos.Unit)
-    
     if dot > 0.1 then
         local distance = relativePos.Magnitude
         local speed = velocity.Magnitude
         local timeToHit = distance / speed
-        
         if timeToHit < 1.5 or distance < 30 then
             return true
         end
@@ -39,11 +34,9 @@ end
 
 RunService.Heartbeat:Connect(function()
     if not _G.AutoShoot then return end
-    
     local character = LocalPlayer.Character
     local rootPart = character and character:FindFirstChild("HumanoidRootPart")
     if not rootPart then return end
-
     local ball = nil
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("BasePart") and obj.CanCollide and not obj:IsDescendantOf(character) then
@@ -53,12 +46,10 @@ RunService.Heartbeat:Connect(function()
             end
         end
     end
-    
     if ball then
         local distance = (ball.Position - rootPart.Position).Magnitude
         local speed = ball.AssemblyLinearVelocity.Magnitude
         local triggerDistance = 15 + (speed * 0.45)
-        
         if distance <= triggerDistance then
             if ParryEvent then
                 if ParryEvent:IsA("RemoteEvent") then

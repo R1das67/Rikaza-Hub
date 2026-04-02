@@ -16,7 +16,7 @@ local ToggleCorner = Instance.new("UICorner")
 local StatusLight = Instance.new("Frame")
 local LightCorner = Instance.new("UICorner")
 
-ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.Name = "RikazaHub"
 
 -- Hauptmenü (Optimiert auf ca. 35-40% Handy-Breite)

@@ -17,36 +17,24 @@ end
 local ParryEvent = getParryEvent()
 _G.AutoShoot = false
 
-local function findTargetBall()
-    local character = LocalPlayer.Character
-    if not character then return nil end
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return nil end
-
-    local bestBall = nil
-    local closestTargeting = -1 
-
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and not obj:IsDescendantOf(character) then
-            local velocity = obj.AssemblyLinearVelocity
-            if velocity.Magnitude > 15 then 
-                local directionToMe = (rootPart.Position - obj.Position).Unit
-                local moveDirection = velocity.Unit
-                
-                -- Punktprodukt: 1 bedeutet, er fliegt exakt auf dich zu
-                local dotProduct = moveDirection:Dot(directionToMe)
-                
-                -- Nur Bälle beachten, die wirklich Richtung Spieler fliegen (Dot > 0.5)
-                if dotProduct > 0.5 then
-                    local distance = (obj.Position - rootPart.Position).Magnitude
-                    if distance < 250 then
-                        return obj 
-                    end
-                end
-            end
+local function isBallTargetingMe(obj, rootPart)
+    local relativePos = rootPart.Position - obj.Position
+    local velocity = obj.AssemblyLinearVelocity
+    
+    if velocity.Magnitude < 5 then return false end
+    
+    local dot = velocity.Unit:Dot(relativePos.Unit)
+    
+    if dot > 0.1 then
+        local distance = relativePos.Magnitude
+        local speed = velocity.Magnitude
+        local timeToHit = distance / speed
+        
+        if timeToHit < 1.5 or distance < 30 then
+            return true
         end
     end
-    return nil
+    return false
 end
 
 RunService.Heartbeat:Connect(function()
@@ -54,13 +42,22 @@ RunService.Heartbeat:Connect(function()
     
     local character = LocalPlayer.Character
     local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-    local ball = findTargetBall()
+    if not rootPart then return end
+
+    local ball = nil
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.CanCollide and not obj:IsDescendantOf(character) then
+            if isBallTargetingMe(obj, rootPart) then
+                ball = obj
+                break
+            end
+        end
+    end
     
-    if ball and rootPart then
+    if ball then
         local distance = (ball.Position - rootPart.Position).Magnitude
         local speed = ball.AssemblyLinearVelocity.Magnitude
-        
-        local triggerDistance = 15 + (speed * 0.35)
+        local triggerDistance = 15 + (speed * 0.45)
         
         if distance <= triggerDistance then
             if ParryEvent then

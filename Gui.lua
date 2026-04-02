@@ -3,13 +3,11 @@ local MainFrame = Instance.new("Frame")
 local StandbyFrame = Instance.new("Frame")
 local UICornerMain = Instance.new("UICorner")
 local UICornerStandby = Instance.new("UICorner")
-
 local Title = Instance.new("TextLabel")
 local StandbyTitle = Instance.new("TextLabel")
 local Arrow = Instance.new("TextButton")
 local CloseButton = Instance.new("TextButton")
 local Divider = Instance.new("Frame")
-
 local CategoryLabel = Instance.new("TextLabel")
 local ToggleButton = Instance.new("TextButton")
 local ToggleCorner = Instance.new("UICorner")
@@ -19,7 +17,6 @@ local LightCorner = Instance.new("UICorner")
 ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.Name = "RikazaHub"
 
--- Hauptmenü (Optimiert auf ca. 35-40% Handy-Breite)
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.Position = UDim2.new(0.325, 0, 0.275, 0) 
@@ -30,7 +27,6 @@ MainFrame.Active = true
 UICornerMain.CornerRadius = UDim.new(0, 15)
 UICornerMain.Parent = MainFrame
 
--- Titel: ⚜️ Rikaza Hub ⚜️
 Title.Parent = MainFrame
 Title.BackgroundTransparency = 1
 Title.Position = UDim2.new(0.05, 0, 0.02, 0)
@@ -41,14 +37,12 @@ Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Trenner
 Divider.Parent = MainFrame
 Divider.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 Divider.BorderSizePixel = 0
 Divider.Position = UDim2.new(0.05, 0, 0.18, 0)
 Divider.Size = UDim2.new(0.9, 0, 0, 1)
 
--- Schließen (X)
 CloseButton.Parent = MainFrame
 CloseButton.BackgroundTransparency = 1
 CloseButton.Position = UDim2.new(0.88, 0, 0.02, 0)
@@ -58,7 +52,6 @@ CloseButton.TextColor3 = Color3.fromRGB(200, 50, 50)
 CloseButton.TextScaled = true
 CloseButton.Font = Enum.Font.GothamBold
 
--- Standby-Bar (Schmal & oben)
 StandbyFrame.Parent = ScreenGui
 StandbyFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 StandbyFrame.Position = UDim2.new(0.35, 0, 0.02, 0)
@@ -78,7 +71,6 @@ StandbyTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
 StandbyTitle.TextScaled = true
 StandbyTitle.Font = Enum.Font.GothamBold
 
--- Kategorie 🔫 Auto
 CategoryLabel.Parent = MainFrame
 CategoryLabel.BackgroundTransparency = 1
 CategoryLabel.Position = UDim2.new(0.05, 0, 0.25, 0)
@@ -89,7 +81,6 @@ CategoryLabel.TextScaled = true
 CategoryLabel.Font = Enum.Font.GothamMedium
 CategoryLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Toggle Button (Mit Brücke zur Main.lua)
 ToggleButton.Parent = MainFrame
 ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 ToggleButton.Position = UDim2.new(0.5, 0, 0.25, 0)
@@ -102,7 +93,6 @@ ToggleButton.Font = Enum.Font.GothamSemibold
 ToggleCorner.CornerRadius = UDim.new(0, 8)
 ToggleCorner.Parent = ToggleButton
 
--- Status Licht (Punkt im Button)
 StatusLight.Parent = ToggleButton
 StatusLight.Position = UDim2.new(0.9, 0, 0.4, 0)
 StatusLight.Size = UDim2.new(0.05, 0, 0.2, 0)
@@ -110,9 +100,8 @@ StatusLight.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 LightCorner.CornerRadius = UDim.new(1, 0)
 LightCorner.Parent = StatusLight
 
--- LOGIK FÜR MENÜ-WECHSEL & AUTOSHOOT
 local isOpen = true
-_G.AutoShoot = false -- Initialer Status für die Main.lua
+_G.AutoShoot = false
 
 local function updateView()
     if isOpen then
@@ -141,13 +130,12 @@ Arrow.MouseButton1Click:Connect(function()
 end)
 
 CloseButton.MouseButton1Click:Connect(function()
-    _G.AutoShoot = false -- Deaktiviert Logik beim Schließen
+    _G.AutoShoot = false
     ScreenGui:Destroy()
 end)
 
 ToggleButton.MouseButton1Click:Connect(function()
-    _G.AutoShoot = not _G.AutoShoot -- Schaltet die globale Variable für Main.lua um
-    
+    _G.AutoShoot = not _G.AutoShoot
     if _G.AutoShoot then
         ToggleButton.Text = "AutoShoot: ON"
         StatusLight.BackgroundColor3 = Color3.fromRGB(0, 255, 120)

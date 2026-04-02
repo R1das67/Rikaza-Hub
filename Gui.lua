@@ -102,7 +102,6 @@ LightCorner.CornerRadius = UDim.new(1, 0)
 LightCorner.Parent = StatusLight
 
 local isOpen = true
-_G.AutoShoot = false
 
 local function updateView()
     if isOpen then

@@ -1,18 +1,22 @@
 local player = game:GetService("Players").LocalPlayer
-local mouse = player:GetMouse()
 local camera = workspace.CurrentCamera
 local runService = game:GetService("RunService")
 
 local function getClosestPlayer()
     local closest = nil
     local dist = math.huge
+    local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+
     for _, p in pairs(game:GetService("Players"):GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid").Health > 0 then
-            local pos, onScreen = camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+        if p ~= player and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid").Health > 0 then
+            local targetHead = p.Character.Head
+            local pos, onScreen = camera:WorldToViewportPoint(targetHead.Position)
+            
             if onScreen then
-                local magnitude = (Vector2.new(pos.X, pos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+                local magnitude = (targetHead.Position - myRoot.Position).Magnitude
                 if magnitude < dist then
-                    closest = p.Character.HumanoidRootPart
+                    closest = targetHead
                     dist = magnitude
                 end
             end
@@ -37,16 +41,25 @@ runService.RenderStepped:Connect(function()
         if not ignore then
             local target = getClosestPlayer()
             
-            if s.AutoAim and target then
-                camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)
-            end
+            if target then
+                if s.AutoAim then
+                    camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)
+                end
 
-            if s.AutoShoot and target and not n:find("Scharfschützengewehr") then
-                task.wait(s.ReactionTime * 0.01) 
-                if mouse1press then
-                    mouse1press()
-                    task.wait(0.02)
-                    mouse1release()
+                if s.AutoShoot and not n:find("Scharfschützengewehr") then
+                    local screenPos, onScreen = camera:WorldToViewportPoint(target.Position)
+                    local viewportSize = camera.ViewportSize
+                    local center = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+                    local mouseDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+
+                    if mouseDist < 50 then
+                        task.wait(s.ReactionTime * 0.01)
+                        if mouse1press then
+                            mouse1press()
+                            task.wait(0.02)
+                            mouse1release()
+                        end
+                    end
                 end
             end
         end
@@ -63,10 +76,11 @@ runService.RenderStepped:Connect(function()
         local moveDir = hum.MoveDirection
         
         if moveDir.Magnitude > 0 then
-            -- Berechnet die Richtung basierend auf Kamera-Blickwinkel und WASD-Input
             local camCF = camera.CFrame
-            local direction = (camCF.LookVector * moveDir.Z) + (camCF.RightVector * moveDir.X)
-            bv.Velocity = direction.Unit * speed
+            local direction = (camCF.LookVector * -moveDir.Z) + (camCF.RightVector * moveDir.X)
+            if direction.Magnitude > 0 then
+                bv.Velocity = direction.Unit * speed
+            end
         else
             bv.Velocity = Vector3.new(0, 0, 0)
         end

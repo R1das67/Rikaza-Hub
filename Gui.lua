@@ -1,5 +1,6 @@
 local player = game:GetService("Players").LocalPlayer
 local pgui = player:WaitForChild("PlayerGui")
+local runService = game:GetService("RunService")
 
 if pgui:FindFirstChild("BetterRivalsUI") then pgui.BetterRivalsUI:Destroy() end
 
@@ -17,25 +18,30 @@ sgui.ResetOnSpawn = false
 sgui.Parent = pgui
 
 local crosshair = Instance.new("Frame")
-crosshair.Name = "Crosshair"
 crosshair.Size = UDim2.new(0, 4, 0, 4)
-crosshair.Position = UDim2.new(0.5, -2, 0.5, -2)
 crosshair.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 crosshair.BorderSizePixel = 0
 crosshair.Parent = sgui
 
 local circle = Instance.new("Frame")
-circle.Name = "FOVCircle"
 circle.Size = UDim2.new(0, 100, 0, 100)
-circle.Position = UDim2.new(0.5, -50, 0.5, -50)
 circle.BackgroundTransparency = 0.8
 circle.BackgroundColor3 = Color3.new(1, 1, 1)
 circle.BorderSizePixel = 1
 circle.Parent = sgui
-
 local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(1, 0)
 uiCorner.Parent = circle
+
+runService.RenderStepped:Connect(function()
+    local hud = pgui:FindFirstChild("HUD") or pgui:FindFirstChild("Gui")
+    local cross = hud and (hud:FindFirstChild("Crosshair", true) or hud:FindFirstChild("Cursor", true))
+    if cross and cross:IsA("GuiObject") then
+        local pos = cross.AbsolutePosition + (cross.AbsoluteSize / 2)
+        crosshair.Position = UDim2.new(0, pos.X - 2, 0, pos.Y - 2)
+        circle.Position = UDim2.new(0, pos.X - 50, 0, pos.Y - 50)
+    end
+end)
 
 local main = Instance.new("Frame")
 main.Name = "Main"
@@ -110,7 +116,6 @@ local function addStatus(parent, key)
     frame.Size = UDim2.new(1, 0, 0, 40)
     frame.BackgroundTransparency = 1
     frame.Parent = parent
-
     local label = Instance.new("TextLabel")
     label.Text = "Status:"
     label.Size = UDim2.new(0, 80, 1, 0)
@@ -119,7 +124,6 @@ local function addStatus(parent, key)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Font = Enum.Font.Gotham
     label.Parent = frame
-
     local off = Instance.new("TextButton")
     off.Text = "OFF"
     off.Size = UDim2.new(0, 60, 0, 30)
@@ -127,7 +131,6 @@ local function addStatus(parent, key)
     off.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
     off.TextColor3 = Color3.fromRGB(255, 0, 0)
     off.Parent = frame
-
     local on = Instance.new("TextButton")
     on.Text = "ON"
     on.Size = UDim2.new(0, 60, 0, 30)
@@ -135,13 +138,11 @@ local function addStatus(parent, key)
     on.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
     on.TextColor3 = Color3.new(1, 1, 1)
     on.Parent = frame
-
     off.MouseButton1Click:Connect(function()
         _G.BetterRivalsSettings[key] = false
         off.TextColor3 = Color3.fromRGB(255, 0, 0)
         on.TextColor3 = Color3.new(1, 1, 1)
     end)
-
     on.MouseButton1Click:Connect(function()
         _G.BetterRivalsSettings[key] = true
         on.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -159,7 +160,6 @@ local function addInput(parent, name, min, max, yPos, key)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Font = Enum.Font.Gotham
     label.Parent = parent
-
     local box = Instance.new("TextBox")
     box.Size = UDim2.new(0, 70, 0, 30)
     box.Position = UDim2.new(0, 190, 0, yPos)
@@ -167,7 +167,6 @@ local function addInput(parent, name, min, max, yPos, key)
     box.TextColor3 = Color3.new(1, 1, 1)
     box.Text = tostring(_G.BetterRivalsSettings[key])
     box.Parent = parent
-
     box.FocusLost:Connect(function()
         local val = tonumber(box.Text)
         if val then
@@ -182,13 +181,10 @@ end
 
 local aimTab = createTab("Auto-Aim", 0)
 addStatus(aimTab, "AutoAim")
-
 local shootTab = createTab("Auto-Shoot", 1)
 addStatus(shootTab, "AutoShoot")
 addInput(shootTab, "Reaktionszeit (1-50):", 1, 50, 50, "ReactionTime")
-
 local flyTab = createTab("Fly", 2)
 addStatus(flyTab, "Fly")
 addInput(flyTab, "Speed (1-80):", 1, 80, 50, "FlySpeed")
-
 tabs["Auto-Aim"].Visible = true

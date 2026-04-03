@@ -2,41 +2,62 @@ local player = game:GetService("Players").LocalPlayer
 local camera = workspace.CurrentCamera
 local runService = game:GetService("RunService")
 
-local function getCrosshairPos()
-    local pgui = player:WaitForChild("PlayerGui")
-    -- Rivals nutzt oft Namen wie "Cursor", "Center" oder "Crosshair" in ihrem HUD
-    local hud = pgui:FindFirstChild("HUD") or pgui:FindFirstChild("Gui")
-    local cross = hud and (hud:FindFirstChild("Crosshair", true) or hud:FindFirstChild("Cursor", true))
+-- 1. ZENTRALE EINSTELLUNGEN ÜBERSCHREIBEN
+local function applyInternalSettings()
+    local replicated = game:GetService("ReplicatedStorage")
+    local modules = replicated:FindFirstChild("Modules")
+    local settingsLib = modules and modules:FindFirstChild("SettingsLibrary")
     
-    if cross and cross:IsA("GuiObject") then
-        return Vector2.new(cross.AbsolutePosition.X + (cross.AbsoluteSize.X/2), cross.AbsolutePosition.Y + (cross.AbsoluteSize.Y/2))
+    if settingsLib then
+        local s = require(settingsLib)
+        -- Wir greifen direkt in die 'Info' Tabelle der Library ein
+        if s.Info then
+            -- Auto-Shoot Schalter und Zeit (10ms)
+            if s.Info["Auto Shoot"] then s.Info["Auto Shoot"].DefaultValue = "Custom" end
+            if s.Info["Auto Shoot Reaction Time"] then s.Info["Auto Shoot Reaction Time"].DefaultValue = 0.01 end
+            
+            -- Aim-Assist Schalter und Stärke (Maximum)
+            if s.Info["Aim Assist"] then s.Info["Aim Assist"].DefaultValue = "Custom" end
+            if s.Info["Aim Assist Strength"] then s.Info["Aim Assist Strength"].DefaultValue = 1.0 end
+            
+            -- Bonus: Rückstoß-Wackeln entfernen
+            if s.Info["Camera Shake"] then s.Info["Camera Shake"].DefaultValue = false end
+        end
     end
-    return camera.ViewportSize / 2
 end
 
+task.spawn(applyInternalSettings)
+
+-- 2. CROSSHAIR-POSITION FINDEN (Für präzises Aiming)
+local function getCrosshairPos()
+    local scripts = player:FindFirstChild("PlayerScripts")
+    local ui = scripts and scripts:FindFirstChild("UserInterFace")
+    local cross = ui and ui:FindFirstChild("Crosshair")
+    if cross and cross:IsA("GuiObject") and cross.AbsolutePosition.X > 0 then
+        return cross.AbsolutePosition + (cross.AbsoluteSize / 2)
+    end
+    -- Fallback auf Bildschirmmitte (0.42 Höhe für Rivals)
+    return Vector2.new(camera.ViewportSize.X * 0.5, camera.ViewportSize.Y * 0.42)
+end
+
+-- 3. NÄCHSTEN GEGNER FINDEN
 local function getClosestPlayer()
-    local closest = nil
-    local dist = math.huge
-    local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return nil end
-
+    local closest, dist = nil, math.huge
+    local myChar = player.Character
+    if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return nil end
+    
     for _, p in pairs(game:GetService("Players"):GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid").Health > 0 then
-            local char = p.Character
-            local targetPart = char:FindFirstChild("HumanoidRootPart") -- Standard: Torso
-            
-            -- Spezialfall: Scharfschützengewehr soll auf den Kopf zielen
-            local tool = player.Character:FindFirstChildOfClass("Tool")
-            if tool and tool.Name:find("Scharfschützengewehr") and char:FindFirstChild("Head") then
-                targetPart = char.Head
-            end
-
-            local _, onScreen = camera:WorldToViewportPoint(targetPart.Position)
-            if onScreen then
-                local magnitude = (targetPart.Position - myRoot.Position).Magnitude
-                if magnitude < dist then
-                    closest = targetPart
-                    dist = magnitude
+        if p ~= player and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local tChar = p.Character
+            -- Fokus auf Kopf für Sniper, sonst Torso
+            local targetPart = tChar:FindFirstChild("Head") or tChar:FindFirstChild("HumanoidRootPart")
+            if targetPart then
+                local _, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+                if onScreen then
+                    local d = (targetPart.Position - myChar.HumanoidRootPart.Position).Magnitude
+                    if d < dist then
+                        closest, dist = targetPart, d
+                    end
                 end
             end
         end
@@ -44,67 +65,47 @@ local function getClosestPlayer()
     return closest
 end
 
+-- 4. DIE HAUPT-SCHLEIFE
 runService.RenderStepped:Connect(function()
-    local s = _G.BetterRivalsSettings
-    if not s then return end
+    local config = _G.BetterRivalsSettings
+    if not config then return end
     
     local char = player.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChild("Humanoid")
-    local tool = char and char:FindFirstChildOfClass("Tool")
-
-    if tool then
-        local n = tool.Name
-        local ignore = n:find("Fäuste") or n:find("Messer") or n:find("Granate") or n:find("Molotow") or n:find("Schild") or n:find("Dolch") or n:find("Axt") or n:find("Kettensäge") or n:find("Katana") or n:find("Sense") or n:find("Rucksack") or n:find("Kriegshorn") or n:find("Sprungbrett")
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local target = getClosestPlayer()
         
-        if not ignore then
-            local target = getClosestPlayer()
-            if target then
-                local crossPos = getCrosshairPos()
-                local targetPos, onScreen = camera:WorldToViewportPoint(target.Position)
-                local targetVec = Vector2.new(targetPos.X, targetPos.Y)
-                
-                if s.AutoAim and onScreen then
-                    local diff = targetVec - crossPos
-                    if mousemoverel then
-                        mousemoverel(diff.X * 0.45, diff.Y * 0.45)
-                    end
-                end
-
-                if s.AutoShoot then
-                    local distToCrosshair = (targetVec - crossPos).Magnitude
-                    if distToCrosshair < 50 then
-                        task.wait(s.ReactionTime * 0.01)
-                        if mouse1press then
-                            mouse1press()
-                            task.wait(0.02)
-                            mouse1release()
-                        end
-                    end
+        if target and config.AutoAim then
+            local crossPos = getCrosshairPos()
+            local tPos = camera:WorldToViewportPoint(target.Position)
+            local targetVec = Vector2.new(tPos.X, tPos.Y)
+            local diff = targetVec - crossPos
+            
+            -- Sanftes Mitziehen (Smoothing)
+            if mousemoverel then
+                mousemoverel(diff.X * 0.4, diff.Y * 0.4)
+            end
+            
+            -- Backup Auto-Shoot (Falls der interne Spiel-Assist mal nicht greift)
+            if config.AutoShoot and diff.Magnitude < 40 then
+                if mouse1press then
+                    mouse1press()
+                    task.wait(0.01)
+                    mouse1release()
                 end
             end
         end
-    end
-
-    if s.Fly and root and hum then
-        local bv = root:FindFirstChild("BetterRivalsFly") or Instance.new("BodyVelocity")
-        bv.Name = "BetterRivalsFly"
-        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        bv.Parent = root
-        hum.PlatformStand = true 
         
-        local speed = (s.FlySpeed or 1) * 20
-        local moveDir = hum.MoveDirection
-        
-        if moveDir.Magnitude > 0 then
-            local camCF = camera.CFrame
-            local direction = (camCF.LookVector * -moveDir.Z) + (camCF.RightVector * moveDir.X)
-            bv.Velocity = direction.Unit * speed
+        -- Fly-Funktion
+        if config.Fly then
+            local root = char.HumanoidRootPart
+            local bv = root:FindFirstChild("BR_Fly") or Instance.new("BodyVelocity", root)
+            bv.Name = "BR_Fly"
+            bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+            bv.Velocity = char.Humanoid.MoveDirection * ((config.FlySpeed or 1) * 30)
+            char.Humanoid.PlatformStand = true
         else
-            bv.Velocity = Vector3.new(0, 0, 0)
+            if char.HumanoidRootPart:FindFirstChild("BR_Fly") then char.HumanoidRootPart.BR_Fly:Destroy() end
+            char.Humanoid.PlatformStand = false
         end
-    else
-        if hum then hum.PlatformStand = false end
-        if root and root:FindFirstChild("BetterRivalsFly") then root.BetterRivalsFly:Destroy() end
     end
 end)

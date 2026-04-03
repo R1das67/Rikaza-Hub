@@ -2,6 +2,18 @@ local player = game:GetService("Players").LocalPlayer
 local camera = workspace.CurrentCamera
 local runService = game:GetService("RunService")
 
+local function getCrosshairPos()
+    local pgui = player:WaitForChild("PlayerGui")
+    -- Rivals nutzt oft Namen wie "Cursor", "Center" oder "Crosshair" in ihrem HUD
+    local hud = pgui:FindFirstChild("HUD") or pgui:FindFirstChild("Gui")
+    local cross = hud and (hud:FindFirstChild("Crosshair", true) or hud:FindFirstChild("Cursor", true))
+    
+    if cross and cross:IsA("GuiObject") then
+        return Vector2.new(cross.AbsolutePosition.X + (cross.AbsoluteSize.X/2), cross.AbsolutePosition.Y + (cross.AbsoluteSize.Y/2))
+    end
+    return camera.ViewportSize / 2
+end
+
 local function getClosestPlayer()
     local closest = nil
     local dist = math.huge
@@ -9,14 +21,21 @@ local function getClosestPlayer()
     if not myRoot then return nil end
 
     for _, p in pairs(game:GetService("Players"):GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid").Health > 0 then
-            local targetHead = p.Character.Head
-            local pos, onScreen = camera:WorldToViewportPoint(targetHead.Position)
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid").Health > 0 then
+            local char = p.Character
+            local targetPart = char:FindFirstChild("HumanoidRootPart") -- Standard: Torso
             
+            -- Spezialfall: Scharfschützengewehr soll auf den Kopf zielen
+            local tool = player.Character:FindFirstChildOfClass("Tool")
+            if tool and tool.Name:find("Scharfschützengewehr") and char:FindFirstChild("Head") then
+                targetPart = char.Head
+            end
+
+            local _, onScreen = camera:WorldToViewportPoint(targetPart.Position)
             if onScreen then
-                local magnitude = (targetHead.Position - myRoot.Position).Magnitude
+                local magnitude = (targetPart.Position - myRoot.Position).Magnitude
                 if magnitude < dist then
-                    closest = targetHead
+                    closest = targetPart
                     dist = magnitude
                 end
             end
@@ -40,19 +59,21 @@ runService.RenderStepped:Connect(function()
         
         if not ignore then
             local target = getClosestPlayer()
-            
             if target then
-                if s.AutoAim then
-                    camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)
+                local crossPos = getCrosshairPos()
+                local targetPos, onScreen = camera:WorldToViewportPoint(target.Position)
+                local targetVec = Vector2.new(targetPos.X, targetPos.Y)
+                
+                if s.AutoAim and onScreen then
+                    local diff = targetVec - crossPos
+                    if mousemoverel then
+                        mousemoverel(diff.X * 0.45, diff.Y * 0.45)
+                    end
                 end
 
-                if s.AutoShoot and not n:find("Scharfschützengewehr") then
-                    local screenPos, onScreen = camera:WorldToViewportPoint(target.Position)
-                    local viewportSize = camera.ViewportSize
-                    local center = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
-                    local mouseDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-
-                    if mouseDist < 50 then
+                if s.AutoShoot then
+                    local distToCrosshair = (targetVec - crossPos).Magnitude
+                    if distToCrosshair < 50 then
                         task.wait(s.ReactionTime * 0.01)
                         if mouse1press then
                             mouse1press()
@@ -78,16 +99,12 @@ runService.RenderStepped:Connect(function()
         if moveDir.Magnitude > 0 then
             local camCF = camera.CFrame
             local direction = (camCF.LookVector * -moveDir.Z) + (camCF.RightVector * moveDir.X)
-            if direction.Magnitude > 0 then
-                bv.Velocity = direction.Unit * speed
-            end
+            bv.Velocity = direction.Unit * speed
         else
             bv.Velocity = Vector3.new(0, 0, 0)
         end
     else
         if hum then hum.PlatformStand = false end
-        if root and root:FindFirstChild("BetterRivalsFly") then
-            root.BetterRivalsFly:Destroy()
-        end
+        if root and root:FindFirstChild("BetterRivalsFly") then root.BetterRivalsFly:Destroy() end
     end
 end)

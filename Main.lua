@@ -1,63 +1,46 @@
 local player = game:GetService("Players").LocalPlayer
 local camera = workspace.CurrentCamera
 local runService = game:GetService("RunService")
+local userInput = game:GetService("UserInputService")
 
--- 1. ZENTRALE EINSTELLUNGEN ÜBERSCHREIBEN
-local function applyInternalSettings()
+local function hasWeapon()
+    local char = player.Character
+    if not char then return false end
+    return char:FindFirstChildOfClass("Tool") ~= nil
+end
+
+local function forceGameSettings()
     local replicated = game:GetService("ReplicatedStorage")
     local modules = replicated:FindFirstChild("Modules")
     local settingsLib = modules and modules:FindFirstChild("SettingsLibrary")
     
     if settingsLib then
         local s = require(settingsLib)
-        -- Wir greifen direkt in die 'Info' Tabelle der Library ein
         if s.Info then
-            -- Auto-Shoot Schalter und Zeit (10ms)
-            if s.Info["Auto Shoot"] then s.Info["Auto Shoot"].DefaultValue = "Custom" end
-            if s.Info["Auto Shoot Reaction Time"] then s.Info["Auto Shoot Reaction Time"].DefaultValue = 0.01 end
-            
-            -- Aim-Assist Schalter und Stärke (Maximum)
-            if s.Info["Aim Assist"] then s.Info["Aim Assist"].DefaultValue = "Custom" end
-            if s.Info["Aim Assist Strength"] then s.Info["Aim Assist Strength"].DefaultValue = 1.0 end
-            
-            -- Bonus: Rückstoß-Wackeln entfernen
-            if s.Info["Camera Shake"] then s.Info["Camera Shake"].DefaultValue = false end
+            pcall(function()
+                if s.Info["Auto Shoot"] then s.Info["Auto Shoot"].CurrentValue = "Custom" end
+                if s.Info["Auto Shoot Reaction Time"] then s.Info["Auto Shoot Reaction Time"].CurrentValue = 0.01 end
+                if s.Info["Aim Assist"] then s.Info["Aim Assist"].CurrentValue = "Custom" end
+                if s.Info["Aim Assist Strength"] then s.Info["Aim Assist Strength"].CurrentValue = 1.0 end
+                if s.Info["Camera Shake"] then s.Info["Camera Shake"].CurrentValue = false end
+            end)
         end
     end
 end
 
-task.spawn(applyInternalSettings)
-
--- 2. CROSSHAIR-POSITION FINDEN (Für präzises Aiming)
-local function getCrosshairPos()
-    local scripts = player:FindFirstChild("PlayerScripts")
-    local ui = scripts and scripts:FindFirstChild("UserInterFace")
-    local cross = ui and ui:FindFirstChild("Crosshair")
-    if cross and cross:IsA("GuiObject") and cross.AbsolutePosition.X > 0 then
-        return cross.AbsolutePosition + (cross.AbsoluteSize / 2)
-    end
-    -- Fallback auf Bildschirmmitte (0.42 Höhe für Rivals)
-    return Vector2.new(camera.ViewportSize.X * 0.5, camera.ViewportSize.Y * 0.42)
-end
-
--- 3. NÄCHSTEN GEGNER FINDEN
-local function getClosestPlayer()
-    local closest, dist = nil, math.huge
-    local myChar = player.Character
-    if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return nil end
-    
+local function getClosestVisibleTarget()
+    local closest, dist = nil, 200
     for _, p in pairs(game:GetService("Players"):GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-            local tChar = p.Character
-            -- Fokus auf Kopf für Sniper, sonst Torso
-            local targetPart = tChar:FindFirstChild("Head") or tChar:FindFirstChild("HumanoidRootPart")
-            if targetPart then
-                local _, onScreen = camera:WorldToViewportPoint(targetPart.Position)
-                if onScreen then
-                    local d = (targetPart.Position - myChar.HumanoidRootPart.Position).Magnitude
-                    if d < dist then
-                        closest, dist = targetPart, d
-                    end
+        if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+            local head = p.Character.Head
+            local pos, onScreen = camera:WorldToViewportPoint(head.Position)
+            if onScreen then
+                local screenPos = Vector2.new(pos.X, pos.Y)
+                local center = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y * 0.42)
+                local d = (screenPos - center).Magnitude
+                if d < dist then
+                    closest = head
+                    dist = d
                 end
             end
         end
@@ -65,46 +48,64 @@ local function getClosestPlayer()
     return closest
 end
 
--- 4. DIE HAUPT-SCHLEIFE
 runService.RenderStepped:Connect(function()
-    local config = _G.BetterRivalsSettings
-    if not config then return end
+    local settings = _G.BetterRivalsSettings
+    if not settings then return end
     
     local char = player.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local target = getClosestPlayer()
-        
-        if target and config.AutoAim then
-            local crossPos = getCrosshairPos()
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if char and root then
+        if not hasWeapon() then
+            if root:FindFirstChild("BR_Fly") then root.BR_Fly:Destroy() end
+            char.Humanoid.PlatformStand = false
+            return
+        end
+
+        forceGameSettings()
+        local target = getClosestVisibleTarget()
+
+        if target and settings.AutoAim then
             local tPos = camera:WorldToViewportPoint(target.Position)
-            local targetVec = Vector2.new(tPos.X, tPos.Y)
-            local diff = targetVec - crossPos
-            
-            -- Sanftes Mitziehen (Smoothing)
+            local center = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y * 0.42)
+            local diff = Vector2.new(tPos.X, tPos.Y) - center
             if mousemoverel then
-                mousemoverel(diff.X * 0.4, diff.Y * 0.4)
+                mousemoverel(diff.X * 0.3, diff.Y * 0.3)
             end
             
-            -- Backup Auto-Shoot (Falls der interne Spiel-Assist mal nicht greift)
-            if config.AutoShoot and diff.Magnitude < 40 then
-                if mouse1press then
-                    mouse1press()
-                    task.wait(0.01)
-                    mouse1release()
+            if settings.AutoShoot and diff.Magnitude < 30 then
+                if not _G.ShotCooldown or tick() - _G.ShotCooldown > 0.12 then
+                    if mouse1click then 
+                        mouse1click() 
+                    elseif mouse1press then
+                        mouse1press()
+                        task.wait(0.02)
+                        mouse1release()
+                    end
+                    _G.ShotCooldown = tick()
                 end
             end
         end
-        
-        -- Fly-Funktion
-        if config.Fly then
-            local root = char.HumanoidRootPart
+
+        if settings.Fly then
             local bv = root:FindFirstChild("BR_Fly") or Instance.new("BodyVelocity", root)
             bv.Name = "BR_Fly"
             bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-            bv.Velocity = char.Humanoid.MoveDirection * ((config.FlySpeed or 1) * 30)
+            
+            local moveDir = Vector3.new(0,0,0)
+            if userInput:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
+            if userInput:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
+            if userInput:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
+            if userInput:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
+            
+            if moveDir.Magnitude > 0 then
+                bv.Velocity = moveDir.Unit * (settings.FlySpeed * 35)
+            else
+                bv.Velocity = Vector3.new(0,0,0)
+            end
             char.Humanoid.PlatformStand = true
         else
-            if char.HumanoidRootPart:FindFirstChild("BR_Fly") then char.HumanoidRootPart.BR_Fly:Destroy() end
+            if root:FindFirstChild("BR_Fly") then root.BR_Fly:Destroy() end
             char.Humanoid.PlatformStand = false
         end
     end

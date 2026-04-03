@@ -16,6 +16,27 @@ sgui.Name = "BetterRivalsUI"
 sgui.ResetOnSpawn = false
 sgui.Parent = pgui
 
+local crosshair = Instance.new("Frame")
+crosshair.Name = "Crosshair"
+crosshair.Size = UDim2.new(0, 4, 0, 4)
+crosshair.Position = UDim2.new(0.5, -2, 0.5, -2)
+crosshair.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+crosshair.BorderSizePixel = 0
+crosshair.Parent = sgui
+
+local circle = Instance.new("Frame")
+circle.Name = "FOVCircle"
+circle.Size = UDim2.new(0, 100, 0, 100)
+circle.Position = UDim2.new(0.5, -50, 0.5, -50)
+circle.BackgroundTransparency = 0.8
+circle.BackgroundColor3 = Color3.new(1, 1, 1)
+circle.BorderSizePixel = 1
+circle.Parent = sgui
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(1, 0)
+uiCorner.Parent = circle
+
 local main = Instance.new("Frame")
 main.Name = "Main"
 main.Size = UDim2.new(0, 550, 0, 400)

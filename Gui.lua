@@ -5,9 +5,8 @@ local userInput = game:GetService("UserInputService")
 
 if pgui:FindFirstChild("BetterRivalsUI") then pgui.BetterRivalsUI:Destroy() end
 
--- Einstellungen ohne ReactionTime (da intern auf 10ms festgesetzt)
 _G.BetterRivalsSettings = _G.BetterRivalsSettings or {
-    AutoAim = false,
+    AimLock = false,
     AutoShoot = false,
     Fly = false,
     FlySpeed = 2
@@ -18,7 +17,39 @@ sgui.Name = "BetterRivalsUI"
 sgui.ResetOnSpawn = false
 sgui.Parent = pgui
 
--- HAUPTFENSTER
+local fovCircle = Instance.new("Frame")
+fovCircle.Name = "FOVCircle"
+fovCircle.Size = UDim2.new(0, 160, 0, 160)
+fovCircle.BackgroundTransparency = 1
+fovCircle.BorderSizePixel = 0
+fovCircle.Visible = false
+fovCircle.Parent = sgui
+
+local uiCornerCircle = Instance.new("UICorner")
+uiCornerCircle.CornerRadius = UDim.new(1, 0)
+uiCornerCircle.Parent = fovCircle
+
+local uiStroke = Instance.new("UIStroke")
+uiStroke.Color = Color3.fromRGB(0, 255, 0)
+uiStroke.Thickness = 2
+uiStroke.Transparency = 0.4
+uiStroke.Parent = fovCircle
+
+local function getRealCrosshairPos()
+    local hud = pgui:FindFirstChild("HUD") or pgui:FindFirstChild("Gui")
+    local cross = hud and (hud:FindFirstChild("Crosshair", true) or hud:FindFirstChild("Cursor", true))
+    if cross and cross:IsA("GuiObject") and cross.AbsolutePosition.X > 0 then
+        return cross.AbsolutePosition + (cross.AbsoluteSize / 2)
+    end
+    return Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y * 0.42)
+end
+
+runService.RenderStepped:Connect(function()
+    local crossPos = getRealCrosshairPos()
+    fovCircle.Position = UDim2.new(0, crossPos.X - 80, 0, crossPos.Y - 80)
+    fovCircle.Visible = _G.BetterRivalsSettings.AimLock
+end)
+
 local main = Instance.new("Frame")
 main.Name = "Main"
 main.Size = UDim2.new(0, 500, 0, 350)
@@ -29,7 +60,6 @@ main.Active = true
 main.Draggable = true
 main.Parent = sgui
 
--- Fenster-Toggle mit Taste 'K'
 userInput.InputBegan:Connect(function(input, gpe)
     if not gpe and input.KeyCode == Enum.KeyCode.K then
         main.Visible = not main.Visible
@@ -46,17 +76,6 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 22
 title.BackgroundTransparency = 1
 title.Parent = main
-
-local sub = Instance.new("TextLabel")
-sub.Text = "made by rikaza | Taste [K] zum Verstecken"
-sub.Size = UDim2.new(0, 300, 0, 20)
-sub.Position = UDim2.new(0, 20, 0, 38)
-sub.TextColor3 = Color3.fromRGB(150, 150, 150)
-sub.TextXAlignment = Enum.TextXAlignment.Left
-sub.Font = Enum.Font.Gotham
-sub.TextSize = 12
-sub.BackgroundTransparency = 1
-sub.Parent = main
 
 local container = Instance.new("Frame")
 container.Name = "ContentContainer"
@@ -87,7 +106,6 @@ local function createTab(name, order)
     btn.TextSize = 14
     btn.Parent = main
     
-    -- UI Corner für Buttons
     local c = Instance.new("UICorner")
     c.CornerRadius = UDim.new(0, 6)
     c.Parent = btn
@@ -106,7 +124,7 @@ local function addStatus(parent, key, labelText)
     frame.Parent = parent
     
     local label = Instance.new("TextLabel")
-    label.Text = labelText or "Status:"
+    label.Text = labelText
     label.Size = UDim2.new(0, 150, 0, 25)
     label.TextColor3 = Color3.new(1, 1, 1)
     label.BackgroundTransparency = 1
@@ -119,7 +137,7 @@ local function addStatus(parent, key, labelText)
     off.Size = UDim2.new(0, 80, 0, 30)
     off.Position = UDim2.new(0, 0, 0, 30)
     off.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-    off.TextColor3 = _G.BetterRivalsSettings[key] == false and Color3.fromRGB(255, 50, 50) or Color3.new(1, 1, 1)
+    off.TextColor3 = Color3.new(1,1,1)
     off.Parent = frame
     
     local on = Instance.new("TextButton")
@@ -127,19 +145,17 @@ local function addStatus(parent, key, labelText)
     on.Size = UDim2.new(0, 80, 0, 30)
     on.Position = UDim2.new(0, 90, 0, 30)
     on.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-    on.TextColor3 = _G.BetterRivalsSettings[key] == true and Color3.fromRGB(50, 255, 50) or Color3.new(1, 1, 1)
+    on.TextColor3 = Color3.new(1,1,1)
     on.Parent = frame
 
-    off.MouseButton1Click:Connect(function()
-        _G.BetterRivalsSettings[key] = false
-        off.TextColor3 = Color3.fromRGB(255, 50, 50)
-        on.TextColor3 = Color3.new(1, 1, 1)
-    end)
-    on.MouseButton1Click:Connect(function()
-        _G.BetterRivalsSettings[key] = true
-        on.TextColor3 = Color3.fromRGB(50, 255, 50)
-        off.TextColor3 = Color3.new(1, 1, 1)
-    end)
+    local function update()
+        on.TextColor3 = _G.BetterRivalsSettings[key] and Color3.fromRGB(50, 255, 50) or Color3.new(1, 1, 1)
+        off.TextColor3 = not _G.BetterRivalsSettings[key] and Color3.fromRGB(255, 50, 50) or Color3.new(1, 1, 1)
+    end
+    update()
+
+    off.MouseButton1Click:Connect(function() _G.BetterRivalsSettings[key] = false update() end)
+    on.MouseButton1Click:Connect(function() _G.BetterRivalsSettings[key] = true update() end)
 end
 
 local function addInput(parent, name, min, max, yPos, key)
@@ -148,7 +164,6 @@ local function addInput(parent, name, min, max, yPos, key)
     frame.Position = UDim2.new(0, 0, 0, yPos)
     frame.BackgroundTransparency = 1
     frame.Parent = parent
-
     local label = Instance.new("TextLabel")
     label.Text = name
     label.Size = UDim2.new(0, 150, 1, 0)
@@ -157,7 +172,6 @@ local function addInput(parent, name, min, max, yPos, key)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Font = Enum.Font.Gotham
     label.Parent = frame
-    
     local box = Instance.new("TextBox")
     box.Size = UDim2.new(0, 80, 0, 30)
     box.Position = UDim2.new(0, 160, 0.5, -15)
@@ -165,28 +179,23 @@ local function addInput(parent, name, min, max, yPos, key)
     box.TextColor3 = Color3.new(1, 1, 1)
     box.Text = tostring(_G.BetterRivalsSettings[key])
     box.Parent = frame
-    
     box.FocusLost:Connect(function()
         local val = tonumber(box.Text)
         if val then
-            local clamped = math.clamp(val, min, max)
-            _G.BetterRivalsSettings[key] = clamped
-            box.Text = tostring(clamped)
-        else
+            _G.BetterRivalsSettings[key] = math.clamp(val, min, max)
             box.Text = tostring(_G.BetterRivalsSettings[key])
         end
     end)
 end
 
--- TABS ERSTELLEN
-local aimTab = createTab("Auto-Aim", 0)
-addStatus(aimTab, "AutoAim", "Aim-Magnet Status:")
+local lockTab = createTab("Aim-Lock", 0)
+addStatus(lockTab, "AimLock", "Lock-Modus Status:")
 
 local shootTab = createTab("Auto-Shoot", 1)
-addStatus(shootTab, "AutoShoot", "Trigger Status (10ms):")
+addStatus(shootTab, "AutoShoot", "Triggerbot Status:")
 
 local flyTab = createTab("Fly", 2)
 addStatus(flyTab, "Fly", "Flug-Modus Status:")
 addInput(flyTab, "Flug-Speed (1-80):", 1, 80, 65, "FlySpeed")
 
-tabs["Auto-Aim"].Visible = true
+tabs["Aim-Lock"].Visible = true

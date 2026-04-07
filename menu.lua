@@ -1,4 +1,16 @@
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/jensonhirst/Orion/main/source')))()
+
+local Main = _G.MainLogic
+if not Main then
+    OrionLib:MakeNotification({
+        Name = "Fehler!",
+        Content = "main.lua wurde nicht geladen. Menü stoppt.",
+        Image = "rbxassetid://4483345998",
+        Time = 5
+    })
+    return 
+end
+
 local Window = OrionLib:MakeWindow({
     Name = "Better Rivals", 
     HidePremium = false, 
@@ -6,9 +18,6 @@ local Window = OrionLib:MakeWindow({
     ConfigFolder = "RivalsConfig",
     IntroEnabled = false
 })
-
-local Main = _G.MainLogic
-if not Man then warn ("ACHTUNG: main.lua wurde nicht gefunden!") return end
 
 local VisualsTab = Window:MakeTab({
 	Name = "Optik",

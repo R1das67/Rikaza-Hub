@@ -1,4 +1,4 @@
-local function loadScript(name, url)
+local function loadScript(url)
     local success, result = pcall(function()
         return loadstring(game:HttpGet(url))()
     end)
@@ -7,9 +7,9 @@ local function loadScript(name, url)
     end
 end
 
-local mainUrl = ""
-local menuUrl = ""
+local mainUrl = "https://raw.githubusercontent.com/R1das67/Rikaza-Hub/refs/heads/main/main.lua"
+local menuUrl = "https://raw.githubusercontent.com/R1das67/Rikaza-Hub/refs/heads/main/menu.lua"
 
-loadScript("MainLogic", mainUrl)
-task.wait(0.5)
-loadScript("Menu", menuUrl)
+loadScript(mainUrl)
+task.wait(0.2)
+loadScript(menuUrl)

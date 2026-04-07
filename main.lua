@@ -42,7 +42,6 @@ local Main = {
 _G.MainLogic = Main
 
 local Lighting = game:GetService("Lighting")
-local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 
 local function getInternalName(inputName)
@@ -62,18 +61,21 @@ local function applySkinDeep(object, textureId)
     end
 end
 
-RunService.RenderStepped:Connect(function()
-    if Main.Status.Weapon and Main.CurrentColor ~= "Empty" then
-        local texId = Main.Assets[Main.CurrentColor]
-        local searchName = getInternalName(Main.TargetWeapon)
-        
-        for _, model in pairs(Camera:GetChildren()) do
-            if model:IsA("Model") then
-                if searchName == "Empty" or string.find(model.Name:lower(), searchName:lower()) then
-                    applySkinDeep(model, texId)
+task.spawn(function()
+    while true do
+        if Main.Status.Weapon and Main.CurrentColor ~= "Empty" then
+            local texId = Main.Assets[Main.CurrentColor]
+            local searchName = getInternalName(Main.TargetWeapon)
+            
+            for _, model in pairs(Camera:GetChildren()) do
+                if model:IsA("Model") then
+                    if searchName == "Empty" or string.find(model.Name:lower(), searchName:lower()) then
+                        applySkinDeep(model, texId)
+                    end
                 end
             end
         end
+        task.wait(0.5)
     end
 end)
 

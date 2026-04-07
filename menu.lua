@@ -1,5 +1,11 @@
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
-local Window = OrionLib:MakeWindow({Name = "Better Rivals", HidePremium = false, SaveConfig = true, ConfigFolder = "RivalsConfig"})
+local Window = OrionLib:MakeWindow({
+    Name = "Better Rivals", 
+    HidePremium = false, 
+    SaveConfig = true, 
+    ConfigFolder = "RivalsConfig",
+    IntroEnabled = false
+})
 
 local Main = _G.MainLogic
 

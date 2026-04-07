@@ -8,6 +8,7 @@ local Window = OrionLib:MakeWindow({
 })
 
 local Main = _G.MainLogic
+if not Man then warn ("ACHTUNG: main.lua wurde nicht gefunden!") return end
 
 local VisualsTab = Window:MakeTab({
 	Name = "Optik",
